@@ -1,0 +1,89 @@
+// The ui-variables file is provided by base themes provided by Atom.
+//
+// See https://github.com/atom/atom-dark-ui/blob/master/styles/ui-variables.less
+// for a full listing of what's available.
+@import "ui-variables";
+
+@colors:
+  #204028,
+  #f2b63d,
+  #a3d9b1,
+  #4d5766,
+  #f200a2,
+  #cc0000,
+  #d9c7a3,
+  #36d98d,
+  #4c36d9,
+  #731d4b,
+  #7f4040,
+  #b6bf30,
+  #00a69b,
+  #290066,
+  #8c697c,
+  #ffc8bf,
+  #636633,
+  #60807d,
+  #442d59,
+  #cc3347,
+  #661b00,
+  #7ae600,
+  #002933,
+  #e1bfff,
+  #ff8c40,
+  #008c00,
+  #3dcef2,
+  #bf73e6,
+  #331b00,
+  #007300,
+  #0088ff,
+  #c200f2,
+  #7f5320,
+  #205380,
+  #ff0000,
+  #330029;
+
+
+:host, atom-text-editor, atom-text-editor::shadow {
+  atom-text-editor .highlight.highlight-selected .region {
+    position: absolute;
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .highlights {
+    .highlight-selected .region {
+      border-radius: 3px;
+      box-sizing: border-box;
+      background-color: transparent;
+      border-width: 1px;
+      border-style: solid;
+    }
+
+    // Box
+    .highlight-selected .region {
+      border-color: #ddd;
+
+    }
+
+    .loop(@counter) when (@counter > 0) {
+      .loop((@counter - 1));    // next iteration
+      @color: extract(@colors, @counter);
+      .highlight-selected.highlight-color@{counter} .region {background-color: @color;}
+    }
+
+    .loop(length(@colors));
+
+    // Background
+    .highlight-selected.background .region {
+      background-color: rgba(155, 149, 0, 0.6);
+    }
+    // Light theme box (set in settings)
+    .highlight-selected.light-theme .region {
+      border-color: rgba(255, 128, 64, 0.4);
+    }
+    // Light theme background (set in settings)
+    .highlight-selected.light-theme.background .region {
+      background-color: rgba(255, 128, 64, 0.2);
+    }
+  }
+}
