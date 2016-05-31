@@ -1,18 +1,21 @@
 {Point} = require 'atom'
 
+compare = (a, b) ->
+  return a.compare(b)
+
 ###*
-Find the index of p in the ordered list positions, or find the
+Find the index of marker m in the ordered list markers, or find the
 index where it should be.  That is, the index `idx` such that
-`positions[idx-1]` is before p, and `positions[idx+1]` is after p.
+`markers[idx-1]` is before p, and `markers[idx+1]` is after p.
 This is modified in the obvious way if `idx` is either `0` or
-`positions.length - 1`.
+`markers.length - 1`.
 ###
-exports.findIndex = findIndex = (p, positions) ->
+exports.findIndex = findIndex = (m, markers) ->
   beg = 0
-  end = positions.length - 1
+  end = markers.length - 1
   while beg < end
     mid = (beg + end) // 2
-    switch p.compare(positions[mid])
+    switch compare(m, markers[mid])
       when 0
         beg = end = mid
       when 1
@@ -22,18 +25,23 @@ exports.findIndex = findIndex = (p, positions) ->
   return beg
 
 ###*
-Insert a point p into an ordered list of positions, maintaining order.
+Insert a point p into an ordered list of markers, maintaining order.
 ###
-exports.insertOrdered = (p, positions) ->
-  idx = findIndex(p, positions)
-  if idx == positions.length
-    positions.push(p)
+exports.insertOrdered = (m, markers) ->
+  idx = findIndex(m, markers)
+  if idx == markers.length
+    markers.push(m)
   else
-    switch p.compare(positions[idx])
-      when 0, -1
-        positions.splice(idx, 0, p)
+    switch compare(m, markers[idx])
+      when 0
+        # Replace the existing marker
+        markers.splice(idx, 1, m)
+      when -1
+        # Insert before existing marker
+        markers.splice(idx, 0, m)
       when 1
-        positions.splice(idx + 1, 0, p)
+        # Insert after existing marker
+        markers.splice(idx + 1, 0, m)
 
 ###*
 Given a position (point) and an ordered list of points, find the points in the
@@ -55,6 +63,15 @@ exports.findPrevNext = (p, positions) ->
       return {prev: positions[idx-1], next: positions[idx]}
     when 1
       return {prev: positions[idx], next: positions[idx+1]}
+
+# Get word under cursor, if any.
+wordRe = /\w+/
+exports.getCurrentWord = ->
+  editor = atom.workspace.getActivePaneItem()
+  word = editor.getWordUnderCursor()
+  # Sometimes the word has weird cruft like '[foo'; clean it up
+  match = wordRe.exec(word)
+  return match and match[0]
 
 # Return the point corresponding to the end of the word.
 # wordBegin:Point is the beginning of the word

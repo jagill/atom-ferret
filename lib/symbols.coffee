@@ -1,5 +1,5 @@
-{Point} = require 'atom'
-{RangeTrie} = require './range-trie'
+{Range, Point} = require 'atom'
+{MarkerTrie} = require './marker-trie'
 
 
 ## ------- HELPERS
@@ -49,7 +49,6 @@ shouldParse = (scopes) ->
 parseSymbols = (grammar, text) ->
     lines = grammar.tokenizeLines(text)
     symbols = new RangeTrie()
-    prev = null
     for tokens, linenum in lines
       offset = 0
       for token in tokens
@@ -73,9 +72,30 @@ class SymbolIndex
 
   # Parses the symbols in text according to grammar, storing the results
   # under filepath
-  parse: (filepath, text, grammar) ->
+  parse: (editor, lineOffset=0) ->
     tick = Date.now()
-    @index[filepath] = parseSymbols(grammar, text)
+
+    filepath = editor.getPath()
+    if filepath not of @index
+      @index[filepath] = new MarkerTrie()
+
+    lines = editor.getGrammar().tokenizeLines(editor.getText())
+    for tokens, linenum in lines
+      colOffset = 0
+      for token in tokens
+        syms = findSymbolsInToken token
+        for symbol in syms
+          name = symbol.name
+          symbolColOffset = colOffset + symbol.offsetMod
+          start = new Point(linenum + lineOffset, symbolColOffset)
+          end = new Point(linenum + lineOffset, symbolColOffset + name.length)
+          mark = editor.markBufferRange(new Range(start, end), invalidate: 'touch')
+          # Must use hasOwnProperty to avoid false positives for 'constructor', 'hasOwnProperty', etc.
+          # Must use Obj's, since we might override symbol.hasOwnProperty
+          # symbols[name] = [] unless Object.prototype.hasOwnProperty.call symbols, name
+          @index[filepath].add(name, mark)
+        colOffset +=  token.value.length
+
     elapsed = Date.now() - tick
     if elapsed > 100
       console.log "Parsing symbols in #{filepath} took #{elapsed} ms"

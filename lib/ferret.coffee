@@ -1,7 +1,9 @@
-FerretView = require './ferret-view'
 {CompositeDisposable, Range} = require 'atom'
-{SymbolIndex} = require './symbols'
 utils = require './utils'
+FerretView = require './ferret-view'
+{SymbolIndex} = require './symbols'
+{Decorator} = require './decorator'
+
 
 module.exports = Ferret =
   ferretView: null
@@ -11,20 +13,33 @@ module.exports = Ferret =
   marks: {}
 
   activate: (state) ->
+    console.log 'Activating ferret'
     @ferretView = new FerretView(state.ferretViewState)
     @findPanel = atom.workspace.addBottomPanel(item: @ferretView, visible: false, className: 'tool-panel panel-bottom')
     @ferretView.setPanel(@findPanel)
 
     @symbolIndex = new SymbolIndex()
+    @decorator = new Decorator(@symbolIndex)
+    # XXX: DEBUG
+    global.symbolIndex = @symbolIndex
+    global.decorator = @decorator
 
     # Events subscribed to in atom's system can be easily cleaned up with a CompositeDisposable
     @subscriptions = new CompositeDisposable
 
     # Register command that toggles this view
-    @subscriptions.add atom.commands.add 'atom-workspace', 'ferret:toggle': => @toggle()
+    @subscriptions.add atom.commands.add 'atom-workspace', 'ferret:toggle': => @test()
     @subscriptions.add atom.commands.add 'atom-workspace', 'ferret:test': => @test()
     @subscriptions.add atom.commands.add 'atom-workspace', 'ferret:testDestroy': => @testDestroy()
 
+    @subscriptions.add atom.workspace.observeTextEditors (editor) =>
+      path = editor?.getPath()
+      if path and path not of @symbolIndex
+        @generate editor
+      editor.onDidStopChanging =>
+        console.log "Re-generating for #{path}"
+        @generate editor
+        # @decorator.regenerate(path)
 
     @ferretView.onDidStopChanging (text) =>
       @markResults text
@@ -50,7 +65,7 @@ module.exports = Ferret =
   generate: (editor) ->
     editor = editor or atom.workspace.getActiveTextEditor()
     console.log "Generating for path", editor.getPath()
-    @symbolIndex.parse editor.getPath(), editor.getText(), editor.getGrammar()
+    @symbolIndex.parse editor
     # console.log "Generated", @symbolIndex.findAllPositions(editor.getPath())
 
   retrieve: (word, editor) ->
@@ -94,14 +109,15 @@ module.exports = Ferret =
       @marks[symbol] = symbolMarks
 
   test: ->
-    console.log "Making decoration"
-    editor = atom.workspace.getActiveTextEditor()
-    range = editor.getSelectedBufferRange()
-    marker = editor.markBufferRange(range, invalidate: 'never')
-    @decoration = editor.decorateMarker(marker, type: 'highlight', class: "highlight-green")
-    # @decoration = editor.decorateMarker(marker, type: 'line', class: "line-green")
-    console.log "Made decoration", @decoration
+    word = utils.getCurrentWord()
+    if @decorator.has(word)
+      console.log "Undoing decoration for #{word}"
+      @decorator.undecorate(word)
+    else
+      console.log "Making decoration for #{word}"
+      @decorator.colorSymbol(word)
 
   testDestroy: ->
-    @decoration.getMarker().destroy()
-    @decoration = null
+    word = utils.getCurrentWord()
+    console.log "Undoing decoration for #{word}"
+    @decorator.undecorate(word)
