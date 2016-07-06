@@ -4,6 +4,7 @@
 exports.Decorator = class Decorator
   constructor: (@symbolIndex) ->
     @decorationIndex = {}  # filepath: symbol: [decoration...]
+    @findDecorationIndex = {}  # filepath: [decoration...]
 
   _assertParsed: (filepath) ->
     if not filepath of @symbolIndex
@@ -46,3 +47,15 @@ exports.Decorator = class Decorator
       for symbol, decorations of symbolDecorations[filepath]
         decoration.destroy() for decoration in decorations
         symbolDecorations[symbol] = []
+
+
+  decorateSearchResults: (prefix, editor) ->
+    filepath = editor.getPath()
+    if filepath of @findDecorationIndex
+      decoration.destroy() for decoration of @findDecorationIndex[filepath]
+    decorations = []
+    allMarks = @symbolIndex.findPositionsForPrefix(filepath, prefix)
+    for symbol, marks of allMarks
+      for mark in marks
+        decorations.push editor.decorateMarker(mark, {type: 'highlight', class: "highlight-selected"})
+    @findDecorationIndex[filepath] = decorations

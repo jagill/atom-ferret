@@ -1,4 +1,4 @@
-{CompositeDisposable, Range} = require 'atom'
+{CompositeDisposable, Range, TextEditor} = require 'atom'
 utils = require './utils'
 FerretView = require './ferret-view'
 {SymbolIndex} = require './symbols'
@@ -32,14 +32,27 @@ module.exports = Ferret =
     @subscriptions.add atom.commands.add 'atom-workspace', 'ferret:test': => @test()
     @subscriptions.add atom.commands.add 'atom-workspace', 'ferret:testDestroy': => @testDestroy()
 
+    watchEditorChanges = (editor) =>
+      editor.onDidChange (diff) ->
+        console.log 'DIFF', diff
+
     @subscriptions.add atom.workspace.observeTextEditors (editor) =>
-      path = editor?.getPath()
-      if path and path not of @symbolIndex
-        @generate editor
+
       editor.onDidStopChanging =>
-        console.log "Re-generating for #{path}"
-        @generate editor
+        # console.log "Re-generating for #{path}"
+        # @generate editor
         # @decorator.regenerate(path)
+
+    @subscriptions.add atom.workspace.observePanes (pane) =>
+      editor = pane.getActiveItem()
+      if editor and editor instanceof TextEditor
+        @generate editor
+        watchEditorChanges editor
+        console.log "ZZZ Active pane item", editor.getPath()
+      @subscriptions.add pane.onDidChangeActiveItem (editor) =>
+        # This can be undefined if the pane closes.
+        return unless editor and editor instanceof TextEditor
+        console.log "ZZZ Changed active editor:", editor.getPath()
 
     @ferretView.onDidStopChanging (text) =>
       @markResults text
