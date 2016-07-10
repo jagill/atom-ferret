@@ -26,10 +26,10 @@ module.exports = Ferret =
     @searchMarks = []
 
     # This is the new method; not quite ready.
-    @decorator = new Decorator(@symbolIndex)
+    # @decorator = new Decorator(@symbolIndex)
     # XXX: DEBUG
-    global.symbolIndex = @symbolIndex
-    global.decorator = @decorator
+    # global.symbolIndex = @symbolIndex
+    # global.decorator = @decorator
 
     # Events subscribed to in atom's system can be easily cleaned up with a CompositeDisposable
     @subscriptions = new CompositeDisposable
@@ -41,13 +41,13 @@ module.exports = Ferret =
     @subscriptions.add atom.commands.add 'atom-workspace', 'ferret:markSymbol': => @markSymbol()
     @subscriptions.add atom.commands.add 'atom-workspace', 'ferret:clearMarks': => @clearMarks()
     @subscriptions.add atom.commands.add 'atom-workspace', 'ferret:clearAllMarks': => @clearAllMarks()
-    @subscriptions.add atom.commands.add 'atom-workspace', 'ferret:toggle': => @test()
+    @subscriptions.add atom.commands.add 'atom-workspace', 'ferret:toggle': => @toggle()
     @subscriptions.add atom.commands.add 'atom-workspace', 'ferret:test': => @test()
     @subscriptions.add atom.commands.add 'atom-workspace', 'ferret:testDestroy': => @testDestroy()
 
     @subscriptions.add atom.workspace.observeTextEditors (editor) =>
       editor.onDidStopChanging =>
-        console.log "Re-generating for #{editor?.getPath()}"
+        # console.log "Re-generating for #{editor?.getPath()}"
         @generate editor
         @marks.regenerate()
         # @decorator.regenerate(path)
@@ -77,60 +77,52 @@ module.exports = Ferret =
   toggle: ->
     if @findPanel.isVisible()
       @findPanel.hide()
+      @_clearSearchMarks()
     else
       @findPanel.show()
-    # if @decoration
-    #   @testDestroy()
-    # else
-    #   @test()
+      searchContents = @ferretView.findEditor.getText()
+      @markResults searchContents
 
   generate: (editor) ->
     editor = editor or atom.workspace.getActiveTextEditor()
     filepath = editor.getPath()
 
-    console.log "Generating for path", filepath
+    # console.log "Generating for path", filepath
     @symbolIndex.parse filepath, editor.getText(), editor.getGrammar()
     # console.log "Generated", @symbolIndex.findAllPositions(editor.getPath())
 
-  retrieve: (prefix, editor) ->
-    return {} unless prefix
-    editor = editor or atom.workspace.getActiveTextEditor()
-    filepath = editor.getPath()
-    unless filepath of @symbolIndex
-      @generate editor
-    return @symbolIndex.findPositionsForPrefix(filepath, prefix)
+  _clearSearchMarks: ->
+    mark.destroy() for mark in @searchMarks
+    @searchMarks = []
 
   markResults: (text) ->
     console.log "Marking results for |#{text}|"
-    return unless text
+    @_clearSearchMarks()
+    # TODO: Make the min threshold into a parameter
+    return unless text and text.length > 1
     prefix = text  # Eventually do some processing.
 
-    if name of @marks
-      mark.destroy() for mark in @marks[name]
-
     editor = atom.workspace.getActiveTextEditor()
-    positionMap = @retrieve prefix, editor
+    filepath = editor.getPath()
+    positionMap = @symbolIndex.findPositionsForPrefix(filepath, prefix)
     console.log "Positions for #{prefix}", positionMap
+
     for symbol, positions of positionMap
       symbolMarks = []
       for pos in positions
         endSymbol = utils.endOfWord pos, symbol
         symbolRange = new Range(pos, endSymbol)
-        console.log "Using range", symbolRange
         symbolMarker = editor.markBufferRange(symbolRange, invalidate: 'touch')
         decoration = editor.decorateMarker(symbolMarker,
               {type: 'highlight', class: "highlight-selected"})
-        symbolMarks.push symbolMarker
-        console.log "Added decoration", decoration
+        @searchMarks.push symbolMarker
 
         endPrefix = utils.endOfWord pos, prefix
         prefixRange = new Range(pos, endPrefix)
         prefixMarker = editor.markBufferRange(prefixRange, invalidate: 'inside')
         editor.decorateMarker(prefixMarker,
-              {type: 'highlight', class: "highlight-red"})
-        symbolMarks.push prefixMarker
-
-      @marks[symbol] = symbolMarks
+              {type: 'highlight', class: "highlight-prefix-match"})
+        @searchMarks.push prefixMarker
 
   _gotoNextPrevSymbol: (prev=true) ->
     word = utils.getCurrentWord()
@@ -143,7 +135,7 @@ module.exports = Ferret =
       pos = prevNext.prev
       if pos and currentPos.isLessThanOrEqual(utils.endOfWord(pos, word))
         # We're inside this word, let's actually go to two previous.
-        twoPrev = utils.findPrevNext(pos, symbols).prev
+        twoPrev = utils.findPrevNext(pos, positions).prev
         pos = twoPrev or pos
     else
       pos = prevNext.next
