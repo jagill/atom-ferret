@@ -1,5 +1,5 @@
 {Range, Point} = require 'atom'
-{MarkerTrie} = require './marker-trie'
+{RangeTrie} = require './range-trie'
 
 
 ## ------- HELPERS
@@ -46,22 +46,6 @@ shouldParse = (scopes) ->
 
   return true
 
-parseSymbols = (grammar, text) ->
-    lines = grammar.tokenizeLines(text)
-    symbols = new RangeTrie()
-    for tokens, linenum in lines
-      offset = 0
-      for token in tokens
-        syms = findSymbolsInToken token
-        for symbol in syms
-          name = symbol.name
-          # Must use hasOwnProperty to avoid false positives for 'constructor', 'hasOwnProperty', etc.
-          # Must use Obj's, since we might override symbol.hasOwnProperty
-          # symbols[name] = [] unless Object.prototype.hasOwnProperty.call symbols, name
-          symbols.add(name, new Point(linenum, offset + symbol.offsetMod))
-        offset +=  token.value.length
-    return symbols
-
 class SymbolIndex
   constructor: ->
     @index = new Map() # path -> RangeTrie
@@ -77,23 +61,16 @@ class SymbolIndex
 
     filepath = editor.getPath()
     if filepath not of @index
-      @index[filepath] = new MarkerTrie()
+      @index[filepath] = new RangeTrie()
 
     lines = editor.getGrammar().tokenizeLines(editor.getText())
     for tokens, linenum in lines
       colOffset = 0
       for token in tokens
-        syms = findSymbolsInToken token
-        for symbol in syms
+        for symbol in findSymbolsInToken(token)
           name = symbol.name
-          symbolColOffset = colOffset + symbol.offsetMod
-          start = new Point(linenum + lineOffset, symbolColOffset)
-          end = new Point(linenum + lineOffset, symbolColOffset + name.length)
-          mark = editor.markBufferRange(new Range(start, end), invalidate: 'touch')
-          # Must use hasOwnProperty to avoid false positives for 'constructor', 'hasOwnProperty', etc.
-          # Must use Obj's, since we might override symbol.hasOwnProperty
-          # symbols[name] = [] unless Object.prototype.hasOwnProperty.call symbols, name
-          @index[filepath].add(name, mark)
+          start = new Point(linenum + lineOffset, colOffset + symbol.offsetMod)
+          @index[filepath].add(name, start)
         colOffset +=  token.value.length
 
     elapsed = Date.now() - tick

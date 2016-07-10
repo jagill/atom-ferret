@@ -2,9 +2,17 @@
 'context-menu':
   'atom-text-editor': [
     {
+      'label': 'Previous Symbol'
+      'command': 'ferret:prevSymbol'
+    },
+    {
+      'label': 'Next Symbol'
+      'command': 'ferret:nextSymbol'
+    },
+    {
       'label': 'Toggle ferret'
       'command': 'ferret:toggle'
-    }
+    },
   ]
 'menu': [
   {
@@ -12,6 +20,14 @@
     'submenu': [
       'label': 'ferret'
       'submenu': [
+        {
+          'label': 'Previous Symbol'
+          'command': 'ferret:prevSymbol'
+        },
+        {
+          'label': 'Next Symbol'
+          'command': 'ferret:nextSymbol'
+        },
         {
           'label': 'Toggle'
           'command': 'ferret:toggle'

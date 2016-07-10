@@ -8,4 +8,6 @@
 # For more detailed documentation see
 # https://atom.io/docs/latest/behind-atom-keymaps-in-depth
 'atom-text-editor':
+  'ctrl-alt-b': 'ferret:prevSymbol'
+  'ctrl-alt-n': 'ferret:nextSymbol'
   'alt-/': 'ferret:toggle'

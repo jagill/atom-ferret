@@ -28,17 +28,19 @@ module.exports = Ferret =
     @subscriptions = new CompositeDisposable
 
     # Register command that toggles this view
+    @subscriptions.add atom.commands.add 'atom-workspace', 'ferret:prevSymbol': => @prevSymbol()
+    @subscriptions.add atom.commands.add 'atom-workspace', 'ferret:nextSymbol': => @nextSymbol()
     @subscriptions.add atom.commands.add 'atom-workspace', 'ferret:toggle': => @test()
     @subscriptions.add atom.commands.add 'atom-workspace', 'ferret:test': => @test()
     @subscriptions.add atom.commands.add 'atom-workspace', 'ferret:testDestroy': => @testDestroy()
 
-    watchEditorChanges = (editor) =>
-      editor.onDidChange (diff) ->
-        console.log 'DIFF', diff
+    # watchEditorChanges = (editor) =>
+    #   editor.onDidChange (diff) ->
+    #     console.log 'DIFF', diff
 
-    @subscriptions.add atom.workspace.observeTextEditors (editor) =>
+    # @subscriptions.add atom.workspace.observeTextEditors (editor) =>
 
-      editor.onDidStopChanging =>
+      # editor.onDidStopChanging =>
         # console.log "Re-generating for #{path}"
         # @generate editor
         # @decorator.regenerate(path)
@@ -47,12 +49,14 @@ module.exports = Ferret =
       editor = pane.getActiveItem()
       if editor and editor instanceof TextEditor
         @generate editor
-        watchEditorChanges editor
-        console.log "ZZZ Active pane item", editor.getPath()
-      @subscriptions.add pane.onDidChangeActiveItem (editor) =>
+        @subscriptions.add editor.onDidStopChanging (text) =>
+          @generate editor
+        # watchEditorChanges editor
+        # console.log "ZZZ Active pane item", editor.getPath()
+      # @subscriptions.add pane.onDidChangeActiveItem (editor) =>
         # This can be undefined if the pane closes.
-        return unless editor and editor instanceof TextEditor
-        console.log "ZZZ Changed active editor:", editor.getPath()
+        # return unless editor and editor instanceof TextEditor
+        # console.log "ZZZ Changed active editor:", editor.getPath()
 
     @ferretView.onDidStopChanging (text) =>
       @markResults text
@@ -81,13 +85,13 @@ module.exports = Ferret =
     @symbolIndex.parse editor
     # console.log "Generated", @symbolIndex.findAllPositions(editor.getPath())
 
-  retrieve: (word, editor) ->
-    return {} unless word
+  retrieve: (prefix, editor) ->
+    return {} unless prefix
     editor = editor or atom.workspace.getActiveTextEditor()
     filepath = editor.getPath()
     unless filepath of @symbolIndex
       @generate editor
-    return @symbolIndex.findPositionsForPrefix(filepath, word)
+    return @symbolIndex.findPositionsForPrefix(filepath, prefix)
 
   markResults: (text) ->
     console.log "Marking results for |#{text}|"
@@ -120,6 +124,28 @@ module.exports = Ferret =
         symbolMarks.push prefixMarker
 
       @marks[symbol] = symbolMarks
+
+  _gotoNextPrevSymbol: (prev=true) ->
+    word = utils.getCurrentWord()
+    editor = atom.workspace.getActivePaneItem()
+    positions = @symbolIndex.findPositions editor.getPath(), word
+    currentPos = editor.getCursorBufferPosition()
+    prevNext = utils.findPrevNext currentPos, positions
+    if prev
+      pos = prevNext.prev
+      if pos and currentPos.isLessThanOrEqual(utils.endOfWord(pos, word))
+        # We're inside this word, let's actually go to two previous.
+        twoPrev = utils.findPrevNext(pos, symbols).prev
+        pos = twoPrev or pos
+    else
+      pos = prevNext.next
+    editor.setCursorBufferPosition pos if pos
+
+  prevSymbol: ->
+    @_gotoNextPrevSymbol true
+
+  nextSymbol: ->
+    @_gotoNextPrevSymbol false
 
   test: ->
     word = utils.getCurrentWord()
