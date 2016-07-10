@@ -30,6 +30,7 @@ module.exports = Ferret =
     # Register command that toggles this view
     @subscriptions.add atom.commands.add 'atom-workspace', 'ferret:prevSymbol': => @prevSymbol()
     @subscriptions.add atom.commands.add 'atom-workspace', 'ferret:nextSymbol': => @nextSymbol()
+    @subscriptions.add atom.commands.add 'atom-workspace', 'ferret:firstSymbol': => @firstSymbol()
     @subscriptions.add atom.commands.add 'atom-workspace', 'ferret:toggle': => @test()
     @subscriptions.add atom.commands.add 'atom-workspace', 'ferret:test': => @test()
     @subscriptions.add atom.commands.add 'atom-workspace', 'ferret:testDestroy': => @testDestroy()
@@ -38,11 +39,10 @@ module.exports = Ferret =
     #   editor.onDidChange (diff) ->
     #     console.log 'DIFF', diff
 
-    # @subscriptions.add atom.workspace.observeTextEditors (editor) =>
-
-      # editor.onDidStopChanging =>
-        # console.log "Re-generating for #{path}"
-        # @generate editor
+    @subscriptions.add atom.workspace.observeTextEditors (editor) =>
+      editor.onDidStopChanging =>
+        console.log "Re-generating for #{editor?.getPath()}"
+        @generate editor
         # @decorator.regenerate(path)
 
     @subscriptions.add atom.workspace.observePanes (pane) =>
@@ -53,10 +53,11 @@ module.exports = Ferret =
           @generate editor
         # watchEditorChanges editor
         # console.log "ZZZ Active pane item", editor.getPath()
-      # @subscriptions.add pane.onDidChangeActiveItem (editor) =>
+      @subscriptions.add pane.onDidChangeActiveItem (editor) =>
         # This can be undefined if the pane closes.
-        # return unless editor and editor instanceof TextEditor
-        # console.log "ZZZ Changed active editor:", editor.getPath()
+        return unless editor and editor instanceof TextEditor
+        console.log "ZZZ Changed active editor:", editor.getPath()
+        @generate editor
 
     @ferretView.onDidStopChanging (text) =>
       @markResults text
@@ -146,6 +147,13 @@ module.exports = Ferret =
 
   nextSymbol: ->
     @_gotoNextPrevSymbol false
+
+  firstSymbol: ->
+    word = utils.getCurrentWord()
+    editor = atom.workspace.getActivePaneItem()
+    positions = @symbolIndex.findPositions editor.getPath(), word
+    pos = positions[0]
+    editor.setCursorBufferPosition pos if pos
 
   test: ->
     word = utils.getCurrentWord()

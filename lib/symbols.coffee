@@ -1,4 +1,4 @@
-{Range, Point} = require 'atom'
+{Point} = require 'atom'
 {RangeTrie} = require './range-trie'
 
 

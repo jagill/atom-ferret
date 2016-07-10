@@ -2,6 +2,10 @@
 'context-menu':
   'atom-text-editor': [
     {
+      'label': 'First Symbol'
+      'command': 'ferret:firstSymbol'
+    },
+    {
       'label': 'Previous Symbol'
       'command': 'ferret:prevSymbol'
     },
@@ -20,6 +24,10 @@
     'submenu': [
       'label': 'ferret'
       'submenu': [
+        {
+          'label': 'First Symbol'
+          'command': 'ferret:firstSymbol'
+        },
         {
           'label': 'Previous Symbol'
           'command': 'ferret:prevSymbol'
