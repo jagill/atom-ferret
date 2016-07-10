@@ -22,6 +22,9 @@ module.exports = Ferret =
     @symbolIndex = new SymbolIndex()
     # Keep track of highlight marks, so we can destroy them properly
     @marks = new SymbolMarks(@symbolIndex)
+
+    @searchMarks = []
+
     # This is the new method; not quite ready.
     @decorator = new Decorator(@symbolIndex)
     # XXX: DEBUG
@@ -83,8 +86,10 @@ module.exports = Ferret =
 
   generate: (editor) ->
     editor = editor or atom.workspace.getActiveTextEditor()
-    console.log "Generating for path", editor.getPath()
-    @symbolIndex.parse editor
+    filepath = editor.getPath()
+
+    console.log "Generating for path", filepath
+    @symbolIndex.parse filepath, editor.getText(), editor.getGrammar()
     # console.log "Generated", @symbolIndex.findAllPositions(editor.getPath())
 
   retrieve: (prefix, editor) ->
@@ -129,6 +134,7 @@ module.exports = Ferret =
 
   _gotoNextPrevSymbol: (prev=true) ->
     word = utils.getCurrentWord()
+    return unless word
     editor = atom.workspace.getActivePaneItem()
     positions = @symbolIndex.findPositions editor.getPath(), word
     currentPos = editor.getCursorBufferPosition()

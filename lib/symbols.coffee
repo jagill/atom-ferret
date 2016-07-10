@@ -56,20 +56,19 @@ class SymbolIndex
 
   # Parses the symbols in text according to grammar, storing the results
   # under filepath
-  parse: (editor, lineOffset=0) ->
+  parse: (filepath, text, grammar) ->
     tick = Date.now()
 
-    filepath = editor.getPath()
     if filepath not of @index
       @index[filepath] = new RangeTrie()
 
-    lines = editor.getGrammar().tokenizeLines(editor.getText())
+    lines = grammar.tokenizeLines(text)
     for tokens, linenum in lines
       colOffset = 0
       for token in tokens
         for symbol in findSymbolsInToken(token)
           name = symbol.name
-          start = new Point(linenum + lineOffset, colOffset + symbol.offsetMod)
+          start = new Point(linenum, colOffset + symbol.offsetMod)
           @index[filepath].add(name, start)
         colOffset +=  token.value.length
 

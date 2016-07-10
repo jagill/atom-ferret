@@ -1,5 +1,5 @@
 FerretView = require '../lib/ferret-view'
 
-describe "FerretView", ->
+xdescribe "FerretView", ->
   it "has one valid test", ->
     expect("life").toBe "easy"
