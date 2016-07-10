@@ -11,4 +11,6 @@
   'ctrl-alt-f': 'ferret:firstSymbol'
   'ctrl-alt-b': 'ferret:prevSymbol'
   'ctrl-alt-n': 'ferret:nextSymbol'
+  'ctrl-alt-m': 'ferret:markSymbol'
+  'ctrl-alt-shift-m': 'ferret:clearAllMarks'
   'alt-/': 'ferret:toggle'

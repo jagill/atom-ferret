@@ -2,6 +2,7 @@
 utils = require './utils'
 FerretView = require './ferret-view'
 {SymbolIndex} = require './symbols'
+{SymbolMarks} = require './symbol-marks'
 {Decorator} = require './decorator'
 
 
@@ -19,6 +20,9 @@ module.exports = Ferret =
     @ferretView.setPanel(@findPanel)
 
     @symbolIndex = new SymbolIndex()
+    # Keep track of highlight marks, so we can destroy them properly
+    @marks = new SymbolMarks(@symbolIndex)
+    # This is the new method; not quite ready.
     @decorator = new Decorator(@symbolIndex)
     # XXX: DEBUG
     global.symbolIndex = @symbolIndex
@@ -31,33 +35,30 @@ module.exports = Ferret =
     @subscriptions.add atom.commands.add 'atom-workspace', 'ferret:prevSymbol': => @prevSymbol()
     @subscriptions.add atom.commands.add 'atom-workspace', 'ferret:nextSymbol': => @nextSymbol()
     @subscriptions.add atom.commands.add 'atom-workspace', 'ferret:firstSymbol': => @firstSymbol()
+    @subscriptions.add atom.commands.add 'atom-workspace', 'ferret:markSymbol': => @markSymbol()
+    @subscriptions.add atom.commands.add 'atom-workspace', 'ferret:clearMarks': => @clearMarks()
+    @subscriptions.add atom.commands.add 'atom-workspace', 'ferret:clearAllMarks': => @clearAllMarks()
     @subscriptions.add atom.commands.add 'atom-workspace', 'ferret:toggle': => @test()
     @subscriptions.add atom.commands.add 'atom-workspace', 'ferret:test': => @test()
     @subscriptions.add atom.commands.add 'atom-workspace', 'ferret:testDestroy': => @testDestroy()
-
-    # watchEditorChanges = (editor) =>
-    #   editor.onDidChange (diff) ->
-    #     console.log 'DIFF', diff
 
     @subscriptions.add atom.workspace.observeTextEditors (editor) =>
       editor.onDidStopChanging =>
         console.log "Re-generating for #{editor?.getPath()}"
         @generate editor
+        @marks.regenerate()
         # @decorator.regenerate(path)
 
     @subscriptions.add atom.workspace.observePanes (pane) =>
       editor = pane.getActiveItem()
       if editor and editor instanceof TextEditor
         @generate editor
-        @subscriptions.add editor.onDidStopChanging (text) =>
-          @generate editor
-        # watchEditorChanges editor
-        # console.log "ZZZ Active pane item", editor.getPath()
       @subscriptions.add pane.onDidChangeActiveItem (editor) =>
         # This can be undefined if the pane closes.
         return unless editor and editor instanceof TextEditor
         console.log "ZZZ Changed active editor:", editor.getPath()
         @generate editor
+        @marks.regenerate()
 
     @ferretView.onDidStopChanging (text) =>
       @markResults text
@@ -154,6 +155,23 @@ module.exports = Ferret =
     positions = @symbolIndex.findPositions editor.getPath(), word
     pos = positions[0]
     editor.setCursorBufferPosition pos if pos
+
+  clearMarks: ->
+    word = utils.getCurrentWord()
+    @marks.clear word
+
+  clearAllMarks: ->
+    @marks.clearAll()
+
+  markSymbol: ->
+    word = utils.getCurrentWord()
+    return unless word
+    if @marks.has word
+      console.log 'Clearing marks for ' + word
+      @marks.clear word
+      return
+    @marks.names.push word
+    @marks.regenerate()
 
   test: ->
     word = utils.getCurrentWord()
